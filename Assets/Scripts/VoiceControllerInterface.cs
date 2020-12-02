@@ -51,9 +51,8 @@ public class VoiceControllerInterface : MonoBehaviour
 
     private void OnRecognizerError(string error)
     {
-        debugLabel.text = "Received error!";
         errorLabel.text = error;
-        SendMessageUpwards("OnVoiceRecognizerResults", error);
+        voiceController.GetSpeech();
     }
 
     #endregion
