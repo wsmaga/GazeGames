@@ -9,8 +9,8 @@ public class MenuItemBehaviour : MonoBehaviour
     private string Keyword;
 
     private int direction = 1;
-    private float MOVE_SPEED = 0.1f;
-    private const float Z_LIMIT = 0.1f;
+    private float MOVE_SPEED = 0.3f;
+    private const float Z_LIMIT = 0.04f;
 
     private void OnMouseDown()
     {
