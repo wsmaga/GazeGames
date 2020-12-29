@@ -49,6 +49,11 @@ public class SplashScreenManager : MonoBehaviour
     /// </summary>
     private SplashScreenState splashScreenState = SplashScreenState.CheckPermissions;
 
+    /// <summary>
+    /// Set to true when the user provides necessary permissions for the app.
+    /// </summary>
+    private bool hasPermissions = false;
+
     private void Start()
     {
         LoadingScreen.enabled = false;  // no loading screen at the start
@@ -56,10 +61,39 @@ public class SplashScreenManager : MonoBehaviour
 #if PLATFORM_ANDROID
         Permission.RequestUserPermission(Permission.Microphone);  // requesting permission for microphone at the very start
 #endif
-        voiceControllerInterface = GetComponentInChildren<VoiceControllerInterface>();  // initializing voice recognizer
-        voiceControllerInterface.StartListening();
+    }
 
-        ChangeState();  // after initialization - first state change
+    private void OnGUI()
+    {
+        if (!Permission.HasUserAuthorizedPermission(Permission.Microphone))  // permissions not granted:
+        {
+            splashScreenState = SplashScreenState.PermissionsDenied;
+            Color currColor = PermissionsWaitText.color;
+            currColor.a = 0;
+            PermissionsWaitText.color = currColor;
+
+            currColor = PermissionsDeniedText.color;
+            currColor.a = 1;
+            PermissionsDeniedText.color = currColor;
+        }
+        else  // permissions granted:
+        {
+            splashScreenState = SplashScreenState.DisplayIntroduction;
+            hasPermissions = true;
+        }
+    }
+
+    private void Update()
+    {
+        if (hasPermissions)
+        {
+            hasPermissions = false;
+            StartCoroutine(FadeToAlpha(TEXT_FADE_TIME, PermissionsWaitText));
+            StartCoroutine(FadeToAlpha(TEXT_FADE_TIME, PermissionsDeniedText));
+            StartCoroutine(UnfadeFromAlpha(TEXT_FADE_TIME, IntroductionText));
+            voiceControllerInterface = GetComponentInChildren<VoiceControllerInterface>();  // initializing voice recognizer
+            voiceControllerInterface.StartListening();
+        }
     }
 
     /// <summary>
@@ -87,7 +121,19 @@ public class SplashScreenManager : MonoBehaviour
                 Application.Quit();
                 break;
             case string b when b.Contains("dalej") || b.Contains("okej") || b.Contains("tak"):  // proceed with the manager's state
-                ChangeState();
+                switch (splashScreenState)
+                {
+                    case SplashScreenState.PermissionsDenied:
+                        LoadingScreen.enabled = true;
+                        Application.Quit();
+                        break;
+                    case SplashScreenState.DisplayIntroduction:
+                        LoadingScreen.enabled = true;
+                        SceneManager.LoadScene("MainMenu", LoadSceneMode.Single);
+                        break;
+                    default:
+                        break;
+                }
                 break;
             default:
                 voiceControllerInterface.StartListening();  // try again to recognize the speech after failuree
@@ -111,38 +157,6 @@ public class SplashScreenManager : MonoBehaviour
         {
             text.color = new Color(text.color.r, text.color.g, text.color.b, text.color.a + (Time.deltaTime / t));
             yield return null;
-        }
-    }
-
-    /// <summary>
-    /// Changes the game manager's state depending on current state and various conditions.
-    /// </summary>
-    private void ChangeState()
-    {
-        switch (splashScreenState)
-        {
-            case SplashScreenState.CheckPermissions:  // just checked for user to grant the app permissions:
-                if (!Permission.HasUserAuthorizedPermission(Permission.Microphone))  // permissions not granted:
-                {
-                    splashScreenState = SplashScreenState.PermissionsDenied;
-                    StartCoroutine(FadeToAlpha(TEXT_FADE_TIME, PermissionsWaitText));
-                    StartCoroutine(UnfadeFromAlpha(TEXT_FADE_TIME, PermissionsDeniedText));
-                }
-                else  // permissions granted:
-                {
-                    splashScreenState = SplashScreenState.DisplayIntroduction;
-                    StartCoroutine(FadeToAlpha(TEXT_FADE_TIME, PermissionsWaitText));
-                    StartCoroutine(UnfadeFromAlpha(TEXT_FADE_TIME, IntroductionText));
-                }
-                break;
-            case SplashScreenState.PermissionsDenied:  // just denied app permissions by the user:
-                break;
-            case SplashScreenState.DisplayIntroduction:  // just received permissions from the user:
-                LoadingScreen.enabled = true;
-                SceneManager.LoadScene("MainMenu", LoadSceneMode.Single);
-                break;
-            default:
-                break;
         }
     }
 
